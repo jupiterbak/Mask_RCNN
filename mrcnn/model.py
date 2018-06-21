@@ -24,7 +24,7 @@ import keras.layers as KL
 import keras.engine as KE
 import keras.models as KM
 
-from mrcnn import utils
+import utils
 
 # Requires TensorFlow 1.3+ and Keras 2.0.8+.
 from distutils.version import LooseVersion
@@ -2098,19 +2098,19 @@ class MaskRCNN():
                                                 config.MASK_POOL_SIZE,
                                                 config.NUM_CLASSES,
                                                 train_bn=config.TRAIN_BN)
-           
+
               model = KM.Model([input_image, input_image_meta, input_anchors],
                                [detections, mrcnn_class, mrcnn_bbox,
                                    mrcnn_mask, rpn_rois, rpn_class, rpn_bbox],
                                name='mask_rcnn')
-           
-         #  Add multi-GPU support.
-         if config.GPU_COUNT > 1:
-              from mrcnn.parallel_model import ParallelModel
-              model = ParallelModel(model, config.GPU_COUNT)
-           
-         return model
-          
+
+        #  Add multi-GPU support.
+        if config.GPU_COUNT > 1:
+             from parallel_model import ParallelModel
+             model = ParallelModel(model, config.GPU_COUNT)
+
+        return model
+
     def find_last(self):
         """Finds the last checkpoint file of the last trained model in the
         model directory.
