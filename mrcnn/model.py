@@ -2092,13 +2092,13 @@ class MaskRCNN():
                                name='mask_rcnn')
            
          #  Add multi-GPU support.
-         i f config.GPU_COUNT > 1:
+         if config.GPU_COUNT > 1:
               from mrcnn.parallel_model import ParallelModel
               model = ParallelModel(model, config.GPU_COUNT)
            
-         r eturn model
+         return model
           
-    def efeind_last(self):
+    def find_last(self):
         """Finds the last checkpoint file of the last trained model in the
         model directory.
         Returns:
