@@ -22,11 +22,11 @@ from matplotlib.patches import Polygon
 import IPython.display
 
 # Root directory of the project
-ROOT_DIR = os.path.abspath("../")
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
-# Import Mask RCNN
-sys.path.append(ROOT_DIR)  # To find local version of the library
-import utils
+# Import Mask R-CNN repo
+sys.path.append(ROOT_DIR) # To find local version of the library
+from mrcnn import utils
 
 
 ############################################################
@@ -84,7 +84,7 @@ def apply_mask(image, mask, color, alpha=0.5):
 def display_instances(image, boxes, masks, class_ids, class_names,
                       scores=None, title="",
                       figsize=(16, 16), ax=None,
-                      show_mask=True, show_bbox=True,
+                      show_mask=True, show_bbox=True, show_class=True,
                       colors=None, captions=None):
     """
     boxes: [num_instance, (y1, x1, y2, x2, class_id)] in image coordinates.
@@ -93,7 +93,7 @@ def display_instances(image, boxes, masks, class_ids, class_names,
     class_names: list of class names of the dataset
     scores: (optional) confidence scores for each box
     title: (optional) Figure title
-    show_mask, show_bbox: To show masks and bounding boxes or not
+    show_mask, show_bbox, show_class: To show masks, classes, and bounding boxes or not
     figsize: (optional) the size of the image
     colors: (optional) An array or colors to use with each object
     captions: (optional) A list of strings to use as captions for each object
@@ -140,7 +140,7 @@ def display_instances(image, boxes, masks, class_ids, class_names,
         if not captions:
             class_id = class_ids[i]
             score = scores[i] if scores is not None else None
-            label = class_names[class_id]
+            label = class_names[class_id] if show_class else ""
             x = random.randint(x1, (x1 + x2) // 2)
             caption = "{} {:.3f}".format(label, score) if score else label
         else:
