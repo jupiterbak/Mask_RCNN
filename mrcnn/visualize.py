@@ -92,7 +92,7 @@ def display_instances(image, boxes, masks, class_ids, class_names,
     class_names: list of class names of the dataset
     scores: (optional) confidence scores for each box
     title: (optional) Figure title
-    show_mask, show_bbox, show_class: To show masks, classes, and bounding boxes or not
+    show_mask, show_class, show_bbox: To show masks, classes and bounding boxes or not
     figsize: (optional) the size of the image
     colors: (optional) An array or colors to use with each object
     captions: (optional) A list of strings to use as captions for each object
@@ -164,8 +164,8 @@ def display_instances(image, boxes, masks, class_ids, class_names,
             p = Polygon(verts, facecolor="none", edgecolor=color)
             ax.add_patch(p)
     ax.imshow(masked_image.astype(np.uint8))
-    if auto_show:
-        plt.show()
+    # if auto_show:
+    #     plt.show()
 
 
 def display_differences(image,

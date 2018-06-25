@@ -1849,7 +1849,7 @@ class MaskRCNN():
         self.mode = mode
         self.config = config
         self.model_dir = model_dir
-        self.set_log_dir()
+        # self.set_log_dir()
         self.keras_model = self.build(mode=mode, config=config)
 
     def build(self, mode, config):
@@ -2112,7 +2112,7 @@ class MaskRCNN():
 
         #  Add multi-GPU support.
         if config.GPU_COUNT > 1:
-             from parallel_model import ParallelModel
+             from mrcnn.parallel_model import ParallelModel
              model = ParallelModel(model, config.GPU_COUNT)
 
         return model
