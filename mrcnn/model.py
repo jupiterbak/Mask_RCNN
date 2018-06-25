@@ -8,6 +8,7 @@ Written by Waleed Abdulla
 """
 
 import os
+import sys
 import random
 import datetime
 import re
@@ -24,7 +25,12 @@ import keras.layers as KL
 import keras.engine as KE
 import keras.models as KM
 
-import utils
+# Root directory of the project
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+
+# Import Mask R-CNN repo
+sys.path.append(ROOT_DIR) # To find local version of the library
+from mrcnn import utils
 
 # Requires TensorFlow 1.3+ and Keras 2.0.8+.
 from distutils.version import LooseVersion
@@ -1830,7 +1836,7 @@ class MaskRCNN():
         self.mode = mode
         self.config = config
         self.model_dir = model_dir
-        self.set_log_dir()
+        # self.set_log_dir()
         self.keras_model = self.build(mode=mode, config=config)
 
     def build(self, mode, config):
@@ -2093,7 +2099,7 @@ class MaskRCNN():
 
         #  Add multi-GPU support.
         if config.GPU_COUNT > 1:
-             from parallel_model import ParallelModel
+             from mrcnn.parallel_model import ParallelModel
              model = ParallelModel(model, config.GPU_COUNT)
 
         return model
