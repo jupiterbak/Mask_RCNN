@@ -965,6 +965,7 @@ def fpn_classifier_graph(rois, feature_maps, image_meta,
     # Occlusion head
     mrcnn_occlusion_logits = KL.TimeDistributed(KL.Dense(2),
                                                 name='mrcnn_occlusion_logits')(shared)
+
     mrcnn_occlusion_probs = KL.TimeDistributed(KL.Activation("softmax"),
                                                name="mrcnn_occlusion_probs")(mrcnn_occlusion_logits)
 
@@ -1160,7 +1161,7 @@ def mrcnn_occlusion_loss_graph(target_occlusions, pred_occlusion_logits):
 
     # Computer loss mean. Use only predictions that contribute
     # to the loss to get a correct mean.
-    loss = tf.reduce_sum(loss) / 2
+    loss = tf.reduce_mean(loss)
     return loss
 
 
