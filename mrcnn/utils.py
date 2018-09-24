@@ -63,7 +63,7 @@ def compute_iou(box, boxes, box_area, boxes_area):
     boxes_area: array of length boxes_count.
 
     Note: the areas are passed in rather than calculated here for
-          efficency. Calculate once in the caller to avoid duplicate work.
+    efficiency. Calculate once in the caller to avoid duplicate work.
     """
     # Calculate intersection areas
     y1 = np.maximum(box[0], boxes[:, 0])
@@ -96,9 +96,9 @@ def compute_overlaps(boxes1, boxes2):
 
 
 def compute_overlaps_masks(masks1, masks2):
-    '''Computes IoU overlaps between two sets of masks.
+    """Computes IoU overlaps between two sets of masks.
     masks1, masks2: [Height, Width, instances]
-    '''
+    """
     
     # If either set of masks is empty return empty result
     if masks1.shape[0] == 0 or masks2.shape[0] == 0:
@@ -118,7 +118,7 @@ def compute_overlaps_masks(masks1, masks2):
 
 
 def non_max_suppression(boxes, scores, threshold):
-    """Performs non-maximum supression and returns indicies of kept boxes.
+    """Performs non-maximum suppression and returns indices of kept boxes.
     boxes: [N, (y1, x1, y2, x2)]. Notice that (y2, x2) lays outside the box.
     scores: 1-D array of box scores.
     threshold: Float. IoU threshold to use for filtering.
@@ -145,10 +145,10 @@ def non_max_suppression(boxes, scores, threshold):
         # Compute IoU of the picked box with the rest
         iou = compute_iou(boxes[i], boxes[ixs[1:]], area[i], area[ixs[1:]])
         # Identify boxes with IoU over the threshold. This
-        # returns indicies into ixs[1:], so add 1 to get
-        # indicies into ixs.
+        # returns indices into ixs[1:], so add 1 to get
+        # indices into ixs.
         remove_ixs = np.where(iou > threshold)[0] + 1
-        # Remove indicies of the picked and overlapped boxes.
+        # Remove indices of the picked and overlapped boxes.
         ixs = np.delete(ixs, remove_ixs)
         ixs = np.delete(ixs, 0)
     return np.array(pick, dtype=np.int32)
@@ -356,7 +356,7 @@ class Dataset(object):
 
     def source_image_link(self, image_id):
         """Returns the path or URL to the image.
-        Override this to return a URL to the image if it's availble online for easy
+        Override this to return a URL to the image if it's available online for easy
         debugging.
         """
         return self.image_info[image_id]["path"]
@@ -440,7 +440,7 @@ def resize_image(image, min_dim=None, max_dim=None, min_scale=None, mode="square
     # Scale?
     if min_dim:
         # Scale up but not down
-        scale = max(1, min_dim / min(h, w))
+        scale = max(1, min_dim / float(min(h, w)))
     if min_scale and scale < min_scale:
         scale = min_scale
 
@@ -448,7 +448,7 @@ def resize_image(image, min_dim=None, max_dim=None, min_scale=None, mode="square
     if max_dim and mode == "square":
         image_max = max(h, w)
         if round(image_max * scale) > max_dim:
-            scale = max_dim / image_max
+            scale = max_dim / float(image_max)
 
     # Resize image using bilinear interpolation
     if scale != 1:
@@ -739,8 +739,8 @@ def compute_ap(gt_boxes, gt_class_ids, gt_masks,
         iou_threshold)
 
     # Compute precision and recall at each prediction box step
-    precisions = np.cumsum(pred_match > -1) / (np.arange(len(pred_match)) + 1)
-    recalls = np.cumsum(pred_match > -1).astype(np.float32) / len(gt_match)
+    precisions = np.cumsum(pred_match > -1) / float((np.arange(len(pred_match)) + 1))
+    recalls = np.cumsum(pred_match > -1).astype(np.float32) / float(len(gt_match))
 
     # Pad with start and end values to simplify the math
     precisions = np.concatenate([[0], precisions, [0]])
@@ -798,7 +798,7 @@ def compute_recall(pred_boxes, gt_boxes, iou):
     positive_ids = np.where(iou_max >= iou)[0]
     matched_gt_boxes = iou_argmax[positive_ids]
 
-    recall = len(set(matched_gt_boxes)) / gt_boxes.shape[0]
+    recall = len(set(matched_gt_boxes)) / float(gt_boxes.shape[0])
     return recall, positive_ids
 
 
