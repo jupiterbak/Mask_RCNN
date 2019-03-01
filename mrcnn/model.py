@@ -321,16 +321,18 @@ class ProposalLayer(KE.Layer):
                 boxes, scores, self.proposal_count,
                 self.nms_threshold, name="rpn_non_max_suppression")
             proposals = tf.gather(boxes, indices)
+            score_proposals = tf.expand_dims(tf.gather(scores, indices), 1)
             # Pad if needed
             padding = tf.maximum(self.proposal_count - tf.shape(proposals)[0], 0)
             proposals = tf.pad(proposals, [(0, padding), (0, 0)])
-            return proposals
-        proposals = utils.batch_slice([boxes, scores], nms,
-                                      self.config.IMAGES_PER_GPU)
-        return proposals
+            score_proposals = tf.pad(score_proposals, [(0, padding), (0, 0)])
+            return proposals, score_proposals
+        pp = utils.batch_slice([boxes, scores], nms,
+                               self.config.IMAGES_PER_GPU)
+        return pp
 
     def compute_output_shape(self, input_shape):
-        return (None, self.proposal_count, 4)
+        return [(None, self.proposal_count, 4), (None, self.proposal_count, 1)]
 
 
 ############################################################
@@ -1830,7 +1832,7 @@ class MaskRCNN():
         config: A Sub-class of the Config class
         model_dir: Directory to save training logs and trained weights
         """
-        assert mode in ['training', 'inference']
+        assert mode in ['training', 'inference', 'rpn_inference']
         self.mode = mode
         self.config = config
         self.model_dir = model_dir
@@ -1843,7 +1845,7 @@ class MaskRCNN():
             mode: Either "training" or "inference". The inputs and
                 outputs of the model differ accordingly.
         """
-        assert mode in ['training', 'inference']
+        assert mode in ['training', 'inference', 'rpn_inference']
 
         # Image size must be dividable by 2 multiple times
         h, w = config.IMAGE_SHAPE[:2]
@@ -1886,7 +1888,7 @@ class MaskRCNN():
                 input_gt_masks = KL.Input(
                     shape=[config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1], None],
                     name="input_gt_masks", dtype=bool)
-        elif mode == "inference":
+        elif mode == "inference" or mode == "rpn_inference":
             # Anchors in normalized coordinates
             input_anchors = KL.Input(shape=[None, 4], name="input_anchors")
 
@@ -1959,11 +1961,12 @@ class MaskRCNN():
         # and zero padded.
         proposal_count = config.POST_NMS_ROIS_TRAINING if mode == "training"\
             else config.POST_NMS_ROIS_INFERENCE
-        rpn_rois = ProposalLayer(
+        _outputs = ProposalLayer(
             proposal_count=proposal_count,
             nms_threshold=config.RPN_NMS_THRESHOLD,
             name="ROI",
             config=config)([rpn_class, rpn_bbox, anchors])
+        rpn_rois, rpn_scores = _outputs
 
         if mode == "training":
             # Class ID mask to mark class IDs supported by the dataset the image
@@ -2029,7 +2032,8 @@ class MaskRCNN():
                        rpn_rois, output_rois,
                        rpn_class_loss, rpn_bbox_loss, class_loss, bbox_loss, mask_loss]
             model = KM.Model(inputs, outputs, name='mask_rcnn')
-        else:
+        
+        elif mode == 'rpn_inference':
             # Network Heads
             # Proposal classifier and BBox regressor heads
             mrcnn_class_logits, mrcnn_class, mrcnn_bbox =\
@@ -2037,12 +2041,20 @@ class MaskRCNN():
                                      config.POOL_SIZE, config.NUM_CLASSES,
                                      train_bn=config.TRAIN_BN,
                                      fc_layers_size=config.FPN_CLASSIF_FC_LAYERS_SIZE)
+            
+            # Zero out the predictions and use the rpn scores. mrcnn_class is
+            # the probability, mrcnn_class_logits is the logit. 
+            rpn_scores.set_shape(mrcnn_class.get_shape())
+            mrcnn_bbox = KL.Lambda(lambda x: x*0.)(mrcnn_bbox)
+            mrcnn_class = KL.Lambda(lambda x: tf.concat([1-x, x], 2))(rpn_scores)
+            mrcnn_class_logits = KL.Lambda(lambda x: tf.concat([1-x, x], 2))(rpn_scores)
 
             # Detections
             # output is [batch, num_detections, (y1, x1, y2, x2, class_id, score)] in
             # normalized coordinates
             detections = DetectionLayer(config, name="mrcnn_detection")(
                 [rpn_rois, mrcnn_class, mrcnn_bbox, input_image_meta])
+            
 
             # Create masks for detections
             detection_boxes = KL.Lambda(lambda x: x[..., :4])(detections)
@@ -2051,16 +2063,44 @@ class MaskRCNN():
                                               config.MASK_POOL_SIZE,
                                               config.NUM_CLASSES,
                                               train_bn=config.TRAIN_BN)
-
+                                              
             model = KM.Model([input_image, input_image_meta, input_anchors],
                              [detections, mrcnn_class, mrcnn_bbox,
                                  mrcnn_mask, rpn_rois, rpn_class, rpn_bbox],
                              name='mask_rcnn')
+        
+        elif mode == 'inference':
+              # Network Heads
+              # Proposal classifier and BBox regressor heads
+              mrcnn_class_logits, mrcnn_class, mrcnn_bbox =\
+                  fpn_classifier_graph(rpn_rois, mrcnn_feature_maps, input_image_meta,
+                                       config.POOL_SIZE, config.NUM_CLASSES,
+                                       train_bn=config.TRAIN_BN,
+                                       fc_layers_size=config.FPN_CLASSIF_FC_LAYERS_SIZE)
+           
+              # Detections
+              # output is [batch, num_detections, (y1, x1, y2, x2, class_id, score)] in 
+              # normalized coordinates
+              detections = DetectionLayer(config, name="mrcnn_detection")(
+                  [rpn_rois, mrcnn_class, mrcnn_bbox, input_image_meta])
+           
+              # Create masks for detections
+              detection_boxes = KL.Lambda(lambda x: x[..., :4])(detections)
+              mrcnn_mask = build_fpn_mask_graph(detection_boxes, mrcnn_feature_maps,
+                                                input_image_meta,
+                                                config.MASK_POOL_SIZE,
+                                                config.NUM_CLASSES,
+                                                train_bn=config.TRAIN_BN)
+
+              model = KM.Model([input_image, input_image_meta, input_anchors],
+                               [detections, mrcnn_class, mrcnn_bbox,
+                                   mrcnn_mask, rpn_rois, rpn_class, rpn_bbox],
+                               name='mask_rcnn')
 
         # Add multi-GPU support.
         if config.GPU_COUNT > 1:
-            from mrcnn.parallel_model import ParallelModel
-            model = ParallelModel(model, config.GPU_COUNT)
+             from mrcnn.parallel_model import ParallelModel
+             model = ParallelModel(model, config.GPU_COUNT)
 
         return model
 
@@ -2491,7 +2531,7 @@ class MaskRCNN():
         scores: [N] float probability scores for the class IDs
         masks: [H, W, N] instance binary masks
         """
-        assert self.mode == "inference", "Create model in inference mode."
+        assert self.mode == "inference" or self.mode == "rpn_inference", "Create model in inference mode."
         assert len(
             images) == self.config.BATCH_SIZE, "len(images) must be equal to BATCH_SIZE"
 
