@@ -12,13 +12,13 @@ Usage: import the module (see Jupyter notebooks for examples), or run from
        the command line as such:
 
     # Train a new model starting from pre-trained COCO weights
-    python3 demonstrator.py train --dataset=/path/to/balloon/dataset --weights=coco
+    python3 demonstrator.py train --dataset=/path/to/FAPSDemonstrator/dataset/xxx.json --weights=coco
 
     # Resume training a model that you had trained earlier
-    python3 demonstrator.py train --dataset=/path/to/balloon/dataset --weights=last
+    python3 demonstrator.py train --dataset=/path/to/FAPSDemonstrator/dataset/xxx.json --weights=last
 
     # Train a new model starting from ImageNet weights
-    python3 demonstrator.py train --dataset=/path/to/balloon/dataset --weights=imagenet
+    python3 demonstrator.py train --dataset=/path/to/FAPSDemonstrator/dataset/xxx.json --weights=imagenet
 
     # Apply color splash to an image
     python3 demonstrator.py splash --weights=/path/to/weights/file.h5 --image=<URL or path to file>
@@ -28,6 +28,7 @@ Usage: import the module (see Jupyter notebooks for examples), or run from
 """
 
 import os
+import random
 import sys
 import json
 import datetime
@@ -47,11 +48,12 @@ COCO_WEIGHTS_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
 
 # Directory to save logs and model checkpoints, if not provided
 # through the command line argument --logs
-DEFAULT_LOGS_DIR = os.path.join(ROOT_DIR, "logs")
+DEFAULT_LOGS_DIR = os.path.join(ROOT_DIR, "FAPSDemonstrator/logs")
 
 ############################################################
 #  Configurations
 ############################################################
+CLASS_ARRAY = ["peanuts", "m_and_m", "haribo", "faps"]
 
 
 class FAPSDemonstratorConfig(Config):
@@ -66,13 +68,26 @@ class FAPSDemonstratorConfig(Config):
     IMAGES_PER_GPU = 1
 
     # Number of classes (including background)
-    NUM_CLASSES = 1 + 1  # Background + balloon
+    NUM_CLASSES = len(CLASS_ARRAY) + 1  # Background + balloon
 
     # Number of training steps per epoch
-    STEPS_PER_EPOCH = 10  # Default 100
+    STEPS_PER_EPOCH = 100
 
     # Skip detections with < 90% confidence
-    DETECTION_MIN_CONFIDENCE = 0.5  # default value 0.9
+    DETECTION_MIN_CONFIDENCE = 0.9  # default value 0.9
+
+    # Backbone network architecture
+    BACKBONE = "resnet50"
+
+    # Max number of final detections
+    DETECTION_MAX_INSTANCES = 20
+
+    # Number of validation steps to run at the end of every training epoch.
+    # A bigger number improves accuracy of validation stats, but slows
+    # down the training.
+    VALIDATION_STEPS = 3
+
+    USE_MINI_MASK = False
 
 
 ############################################################
@@ -81,65 +96,52 @@ class FAPSDemonstratorConfig(Config):
 
 class FAPSDemonstratorDataset(utils.Dataset):
 
-    def load_demonstrator(self, dataset_dir, subset):
+    def __init__(self, class_map=None):
+        super().__init__(class_map)
+        self.train = []
+        self.eval = []
+        self.test = []
+
+    def init_dataset(self, dataset_file=None):
+        if not dataset_file is None:
+            data = list(json.load(open(dataset_file)))
+            l = len(data)
+            random.shuffle(data)
+            self.train = data[:int(l * 0.8)]
+            self.eval = data[int(l * 0.8):]
+
+    def load_demonstrator(self, dataset_file, subset):
         """Load a subset of the FAPS demonstrator dataset.
-        dataset_dir: Root directory of the dataset.
+        dataset_file: file path of the exported labeled dataset.
         subset: Subset to load: train or val
         """
-        # Add classes. We have only one class to add.
-        self.add_class("peanuts", 1, "peanuts")
+        # Add classes. Now we have 4 classes.
+        for i, cl in enumerate(CLASS_ARRAY):
+            self.add_class("FAPSDemonstrator", i+1, cl)
 
         # Train or validation dataset?
         assert subset in ["train", "val"]
-        dataset_dir = os.path.join(dataset_dir, subset)
+        self.init_dataset(dataset_file=dataset_file)
 
-        # Load annotations
-        # VGG Image Annotator (up to version 1.6) saves each image in the form:
-        # { 'filename': '28503151_5b5b7ec140_b.jpg',
-        #   'regions': {
-        #       '0': {
-        #           'region_attributes': {},
-        #           'shape_attributes': {
-        #               'all_points_x': [...],
-        #               'all_points_y': [...],
-        #               'name': 'polygon'}},
-        #       ... more regions ...
-        #   },
-        #   'size': 100202
-        # }
-        # We mostly care about the x and y coordinates of each region
-        # Note: In VIA 2.0, regions was changed from a dict to a list.
-        annotations = json.load(open(os.path.join(dataset_dir, "via_region_data.json")))
-        annotations = list(annotations.values())  # don't need the dict keys
-
-        # The VIA tool saves images in the JSON even if they don't have any
-        # annotations. Skip unannotated images.
-        annotations = [a for a in annotations if a['regions']]
+        annotations = self.train
+        if subset == "val":
+            annotations = self.eval
 
         # Add images
         for a in annotations:
-            # Get the x, y coordinaets of points of the polygons that make up
-            # the outline of each object instance. These are stores in the
-            # shape_attributes (see json format above)
-            # The if condition is needed to support VIA versions 1.x and 2.x.
-            if type(a['regions']) is dict:
-                polygons = [r['shape_attributes'] for r in a['regions'].values()]
-            else:
-                polygons = [r['shape_attributes'] for r in a['regions']] 
-
             # load_mask() needs the image size to convert polygons to masks.
             # Unfortunately, VIA doesn't include it in JSON, so we must read
             # the image. This is only managable since the dataset is tiny.
-            image_path = os.path.join(dataset_dir, a['filename'])
+            image_path = a["Labeled Data"]
             image = skimage.io.imread(image_path)
             height, width = image.shape[:2]
 
             self.add_image(
-                "balloon",
-                image_id=a['filename'],  # use file name as a unique image id
+                "FAPSDemonstrator",
+                image_id=a["External ID"],  # use file name as a unique image id
                 path=image_path,
                 width=width, height=height,
-                polygons=polygons)
+                labels=a["Label"]["objects"])
 
     def load_mask(self, image_id):
         """Generate instance masks for an image.
@@ -150,27 +152,30 @@ class FAPSDemonstratorDataset(utils.Dataset):
         """
         # If not a balloon dataset image, delegate to parent class.
         image_info = self.image_info[image_id]
-        if image_info["source"] != "balloon":
+        if image_info["source"] != "FAPSDemonstrator":
             return super(self.__class__, self).load_mask(image_id)
 
-        # Convert polygons to a bitmap mask of shape
+        # Read the mask of shape
         # [height, width, instance_count]
         info = self.image_info[image_id]
-        mask = np.zeros([info["height"], info["width"], len(info["polygons"])],
+        mask = np.zeros([info["height"], info["width"], len(info["labels"])],
                         dtype=np.uint8)
-        for i, p in enumerate(info["polygons"]):
-            # Get indexes of pixels inside the polygon and set them to 1
-            rr, cc = skimage.draw.polygon(p['all_points_y'], p['all_points_x'])
-            mask[rr, cc, i] = 1
+        class_ids = []
+        for i, label_object in enumerate(info["labels"]):
+            # Get the class id
+            class_id = CLASS_ARRAY.index(label_object["value"]) + 1
+            # Read the label mask
+            l_mask = skimage.io.imread(label_object["instanceURI"], as_gray=True)
+            mask[:, :, i] = np.where(l_mask == 0, 0, 1)
+            class_ids.append(class_id)
 
-        # Return mask, and array of class IDs of each instance. Since we have
-        # one class ID only, we return an array of 1s
-        return mask.astype(np.bool), np.ones([mask.shape[-1]], dtype=np.int32)
+        # Return mask, and array of class IDs of each instance.
+        return mask.astype(np.bool), np.array(class_ids, dtype=np.int32)
 
     def image_reference(self, image_id):
         """Return the path of the image."""
         info = self.image_info[image_id]
-        if info["source"] == "balloon":
+        if info["source"] == "FAPSDemonstrator":
             return info["path"]
         else:
             super(self.__class__, self).image_reference(image_id)
@@ -228,6 +233,14 @@ def detect_and_color_splash(model, image_path=None, video_path=None):
         print("Running on {}".format(args.image))
         # Read image
         image = skimage.io.imread(args.image)
+        # for the FAPS demonstrator we only have grey images
+        image = skimage.color.gray2rgb(image)
+        image, _, _, _, _ = utils.resize_image(
+            image,
+            min_dim=config.IMAGE_MIN_DIM,
+            max_dim=config.IMAGE_MAX_DIM,
+            mode=config.IMAGE_RESIZE_MODE)
+        
         # Detect objects
         r = model.detect([image], verbose=1)[0]
         # Color splash
@@ -280,13 +293,13 @@ if __name__ == '__main__':
 
     # Parse command line arguments
     parser = argparse.ArgumentParser(
-        description='Train Mask R-CNN to detect balloons.')
+        description='Train Mask R-CNN to detect FAPS demonstrator objects.')
     parser.add_argument("command",
                         metavar="<command>",
                         help="'train' or 'splash'")
     parser.add_argument('--dataset', required=False,
-                        metavar="/path/to/balloon/dataset/",
-                        help='Directory of the Balloon dataset')
+                        metavar="/path/to/FAPSDemonstrator/dataset/xxx.json",
+                        help='Path of the exported labeled dataset')
     parser.add_argument('--weights', required=True,
                         metavar="/path/to/weights.h5",
                         help="Path to weights .h5 file or 'coco'")

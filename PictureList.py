@@ -153,7 +153,7 @@ video_writer = cv2.VideoWriter('output.avi', fourcc, 5.0, (1024, 768))
 ground_colors = get_colors(len(class_names))
 
 # get all images
-PICTURE_FOLDER = 'E:\WORKSPACE_JBK\Temp\Image_Labelling'
+PICTURE_FOLDER = 'D:/GIT_REPO/FAPSDemonstratorCalibrationService/NONE'
 # Set path to the images
 calib_imgs_path = Path(PICTURE_FOLDER)
 img_list = []
