@@ -113,7 +113,7 @@ class ImageProcessor:
         colors = list(map(lambda x: (int(x[0] * 255), int(x[1] * 255), int(x[2] * 255)), colors))
         return colors
 
-    def process_image(self, image_path=None, display=True):
+    def process_image(self, image_path=None):
         logger.info("Processing new images")
         if image_path is None:
             return []
@@ -137,15 +137,6 @@ class ImageProcessor:
         masked_image = self.draw_bbox(frame, boxes, masks, class_ids, self.class_names, scores, self.ground_colors)
         masked_image = cv2.cvtColor(masked_image, cv2.COLOR_RGB2BGR)
 
-        # Display the resulting frame
-        if display is True:
-            cv2.namedWindow(image_path, cv2.WINDOW_NORMAL)
-            # cv2.resizeWindow('image', 192, 256)
-            # cv2.moveWindow(image_path, 100, 100)
-            cv2.imshow(image_path, masked_image)
-            if cv2.waitKey(2) & 0xFF == ord('q'):
-                cv2.destroyAllWindows()
-                return
         return boxes, masks, class_ids, scores, masked_image
 
 
@@ -160,19 +151,23 @@ class Service:
         self.exchange = None
         self.exchange_signal = None
         self.exchange_pub = None
+        self.exchange_result_pub = None
         self.exchange_name = None
         self.exchange_signals_name = None
         self.exchange_pub_name = None
+        self.exchange_result_pub_name = None
         self.queue = None
         self.queue_signal = None
         self.queue_pub = None
+        self.queue_result_pub = None
         self.signal_queue = []
         self.processor = ImageProcessor()
 
-    def IncommingPictureCallback(self, ch, method, properties, data):
+    def incoming_picture_callback(self, ch, method, properties, data):
         logger.info("Incoming Image")
         if len(self.signal_queue) > 0:
-            current_object = self.signal_queue.pop(0)
+            info_wrapper = self.signal_queue.pop(0)
+            current_object = info_wrapper["object"]
             body = json.loads(data)
             buffer = np.asarray(body["value"]["data"]["data"])
             dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -187,28 +182,59 @@ class Service:
             f.close()
             # Process the image. TODO: start an external process for it
             boxes, masks, class_ids, scores, masked_image = self.processor.process_image(file_path)
+
             # Send the result back
             data = {
                 "time": datetime.datetime.now().timestamp(),
                 "start": True,
                 "object": current_object,
+                "info_wrapper": info_wrapper,
                 "boxes": boxes.tolist(),
                 "class_ids": class_ids.tolist(),
                 "class_name": [CLASS_NAMES[c] for c in class_ids.tolist()],
                 "scores": scores.tolist()
             }
-            self.channel.basic_publish(exchange=self.exchange_pub_name,
-                                  routing_key='',
-                                  body=json.dumps(data))
+            self.channel.basic_publish(
+                exchange=self.exchange_pub_name,
+                routing_key='',
+                body=json.dumps(data))
 
-    def IncommingSignalsCallback(self, ch, method, properties, data):
+            # Send the debug picture back
+            # Display the resulting frame
+            if self.publish is False:
+                cv2.namedWindow(current_object, cv2.WINDOW_NORMAL)
+                # cv2.resizeWindow('image', 192, 256)
+                # cv2.moveWindow(image_path, 100, 100)
+                cv2.imshow(current_object, masked_image)
+                if cv2.waitKey(2) & 0xFF == ord('q'):
+                    cv2.destroyAllWindows()
+                    return
+            else:
+                debug_data = {
+                    "time": datetime.datetime.now().timestamp(),
+                    "start": True,
+                    "object": current_object,
+                    "info_wrapper": info_wrapper,
+                    "boxes": boxes.tolist(),
+                    "class_ids": class_ids.tolist(),
+                    "class_name": [CLASS_NAMES[c] for c in class_ids.tolist()],
+                    "scores": scores.tolist(),
+                    "picture": masked_image.tolist()
+                }
+                self.channel.basic_publish(
+                    exchange=self.exchange_result_pub_name,
+                    routing_key='',
+                    body=json.dumps(debug_data))
+
+    def incoming_processing_signal_callback(self, ch, method, properties, data):
         logger.info("Image Processing Signal")
         body = json.loads(data)
         if body["start"] == True:
-            self.signal_queue.append(body["object"])
+            self.signal_queue.append(body)
 
-    def connectAndStart(self, _url, _port, _user, _passwd, _exchange, _queue, _exchange_signal, _queue_signal,
-                        _exchange_pub, _queue_pub, _callbackImage, _callbackSignal):
+    def connect_and_start(self, _url, _port, _user, _passwd, _exchange, _queue, _exchange_signal, _queue_signal,
+                          _exchange_pub, _queue_pub, _exchange_result_pub, _queue_result_pub,
+                          _callback_incoming_image, _callback_image_signal):
         """
             Connect the FAPSDemonstratorAPI to the demonstrator.
         :return true if the connect has been established or false otherwise.
@@ -241,6 +267,14 @@ class Service:
                 durable=False,
                 exchange_type='fanout'
             )
+            self.exchange_result_pub_name = _exchange_result_pub
+            self.exchange_result_pub = self.channel.exchange_declare(
+                exchange=_exchange_result_pub,
+                passive=False,
+                durable=False,
+                exchange_type='fanout'
+            )
+
             self.queue = self.channel.queue_declare(
                 queue=_queue,
                 durable=False,
@@ -259,13 +293,20 @@ class Service:
                 exclusive=False,
                 auto_delete=True,
             ).method.queue
+            self.queue_result_pub = self.channel.queue_declare(
+                queue=_queue_result_pub,
+                durable=False,
+                exclusive=False,
+                auto_delete=True,
+            ).method.queue
+
             self.channel.queue_bind(exchange=_exchange, queue=self.queue, routing_key='')
             self.channel.queue_bind(exchange=_exchange_signal, queue=self.queue_signal, routing_key='')
             self.channel.queue_bind(exchange=_exchange_pub, queue=self.queue_pub, routing_key='')
 
             # bind the call back to the demonstrator FAPSDemonstratorAPI and start listening
-            self.channel.basic_consume(on_message_callback=_callbackImage, queue=self.queue, auto_ack=True)
-            self.channel.basic_consume(on_message_callback=_callbackSignal, queue=self.queue_signal, auto_ack=True)
+            self.channel.basic_consume(on_message_callback=_callback_incoming_image, queue=self.queue, auto_ack=True)
+            self.channel.basic_consume(on_message_callback=_callback_image_signal, queue=self.queue_signal, auto_ack=True)
             try:
                 self.channel.start_consuming()
             except KeyboardInterrupt:
@@ -289,7 +330,7 @@ if __name__ == '__main__':
     logger.info('Demonstrator Image Processing Service using pika version: %s' % pika.__version__)
     service = Service(True)
 
-    service.connectAndStart(
+    service.connect_and_start(
         _url=DEMONSTRATOR_ENDPOINT,
         _port=5672,
         _user='esys',
@@ -300,6 +341,8 @@ if __name__ == '__main__':
         _queue_signal="FAPS_DEMONSTRATOR_ImageProcessing_ProcessingSignals",
         _exchange_pub="FAPS_DEMONSTRATOR_ImageProcessing_ProcessingResults",
         _queue_pub="FAPS_DEMONSTRATOR_ImageProcessing_ProcessingResults",
-        _callbackImage=service.IncommingPictureCallback,
-        _callbackSignal=service.IncommingSignalsCallback
+        _exchange_result_pub="FAPS_DEMONSTRATOR_ImageProcessing_ProcessingResults_Debug",
+        _queue_result_pub="FAPS_DEMONSTRATOR_ImageProcessing_ProcessingResults_Debug",
+        _callback_incoming_image=service.incoming_picture_callback,
+        _callback_image_signal=service.incoming_processing_signal_callback
     )
