@@ -2,7 +2,7 @@
 
 This is an implementation of [Mask R-CNN](https://arxiv.org/abs/1703.06870) on Python 3, Keras, and TensorFlow. The model generates bounding boxes and segmentation masks for each instance of an object in the image. It's based on Feature Pyramid Network (FPN) and a ResNet101 backbone.
 
-![Instance Segmentation Sample](assets/street.png)
+![Instance Segmentation Sample](backup/assets/street.png)
 
 The repository includes:
 * Source code of Mask R-CNN built on FPN and ResNet101.
@@ -18,61 +18,61 @@ The code is documented and designed to be easy to extend. If you use it in your 
 This dataset was created from 3D-reconstructed spaces captured by our customers who agreed to make them publicly available for academic use. You can see more examples [here](https://matterport.com/gallery/).
 
 # Getting Started
-* [demo.ipynb](samples/demo.ipynb) Is the easiest way to start. It shows an example of using a model pre-trained on MS COCO to segment objects in your own images.
+* [demo.ipynb](backup/samples/demo.ipynb) Is the easiest way to start. It shows an example of using a model pre-trained on MS COCO to segment objects in your own images.
 It includes code to run object detection and instance segmentation on arbitrary images.
 
-* [train_shapes.ipynb](samples/shapes/train_shapes.ipynb) shows how to train Mask R-CNN on your own dataset. This notebook introduces a toy dataset (Shapes) to demonstrate training on a new dataset.
+* [train_shapes.ipynb](backup/samples/shapes/train_shapes.ipynb) shows how to train Mask R-CNN on your own dataset. This notebook introduces a toy dataset (Shapes) to demonstrate training on a new dataset.
 
 * ([model.py](mrcnn/model.py), [utils.py](mrcnn/utils.py), [config.py](mrcnn/config.py)): These files contain the main Mask RCNN implementation. 
 
 
-* [inspect_data.ipynb](samples/coco/inspect_data.ipynb). This notebook visualizes the different pre-processing steps
+* [inspect_data.ipynb](backup/samples/coco/inspect_data.ipynb). This notebook visualizes the different pre-processing steps
 to prepare the training data.
 
-* [inspect_model.ipynb](samples/coco/inspect_model.ipynb) This notebook goes in depth into the steps performed to detect and segment objects. It provides visualizations of every step of the pipeline.
+* [inspect_model.ipynb](backup/samples/coco/inspect_model.ipynb) This notebook goes in depth into the steps performed to detect and segment objects. It provides visualizations of every step of the pipeline.
 
-* [inspect_weights.ipynb](samples/coco/inspect_weights.ipynb)
+* [inspect_weights.ipynb](backup/samples/coco/inspect_weights.ipynb)
 This notebooks inspects the weights of a trained model and looks for anomalies and odd patterns.
 
 
 # Step by Step Detection
 To help with debugging and understanding the model, there are 3 notebooks 
-([inspect_data.ipynb](samples/coco/inspect_data.ipynb), [inspect_model.ipynb](samples/coco/inspect_model.ipynb),
-[inspect_weights.ipynb](samples/coco/inspect_weights.ipynb)) that provide a lot of visualizations and allow running the model step by step to inspect the output at each point. Here are a few examples:
+([inspect_data.ipynb](backup/samples/coco/inspect_data.ipynb), [inspect_model.ipynb](backup/samples/coco/inspect_model.ipynb),
+[inspect_weights.ipynb](backup/samples/coco/inspect_weights.ipynb)) that provide a lot of visualizations and allow running the model step by step to inspect the output at each point. Here are a few examples:
 
 
 
 ## 1. Anchor sorting and filtering
 Visualizes every step of the first stage Region Proposal Network and displays positive and negative anchors along with anchor box refinement.
-![](assets/detection_anchors.png)
+![](backup/assets/detection_anchors.png)
 
 ## 2. Bounding Box Refinement
 This is an example of final detection boxes (dotted lines) and the refinement applied to them (solid lines) in the second stage.
-![](assets/detection_refinement.png)
+![](backup/assets/detection_refinement.png)
 
 ## 3. Mask Generation
 Examples of generated masks. These then get scaled and placed on the image in the right location.
 
-![](assets/detection_masks.png)
+![](backup/assets/detection_masks.png)
 
 ## 4.Layer activations
 Often it's useful to inspect the activations at different layers to look for signs of trouble (all zeros or random noise).
 
-![](assets/detection_activations.png)
+![](backup/assets/detection_activations.png)
 
 ## 5. Weight Histograms
 Another useful debugging tool is to inspect the weight histograms. These are included in the inspect_weights.ipynb notebook.
 
-![](assets/detection_histograms.png)
+![](backup/assets/detection_histograms.png)
 
 ## 6. Logging to TensorBoard
 TensorBoard is another great debugging and visualization tool. The model is configured to log losses and save weights at the end of every epoch.
 
-![](assets/detection_tensorboard.png)
+![](backup/assets/detection_tensorboard.png)
 
 ## 6. Composing the different pieces into a final result
 
-![](assets/detection_final.png)
+![](backup/assets/detection_final.png)
 
 
 # Training on MS COCO
@@ -199,43 +199,43 @@ If you use Docker, the code has been verified to work on
 If you extend this model to other datasets or build projects that use it, we'd love to hear from you.
 
 ### [4K Video Demo](https://www.youtube.com/watch?v=OOT3UIXZztE) by Karol Majek.
-[![Mask RCNN on 4K Video](assets/4k_video.gif)](https://www.youtube.com/watch?v=OOT3UIXZztE)
+[![Mask RCNN on 4K Video](backup/assets/4k_video.gif)](https://www.youtube.com/watch?v=OOT3UIXZztE)
 
 ### [Images to OSM](https://github.com/jremillard/images-to-osm): Improve OpenStreetMap by adding baseball, soccer, tennis, football, and basketball fields.
 
-![Identify sport fields in satellite images](assets/images_to_osm.png)
+![Identify sport fields in satellite images](backup/assets/images_to_osm.png)
 
 ### [Splash of Color](https://engineering.matterport.com/splash-of-color-instance-segmentation-with-mask-r-cnn-and-tensorflow-7c761e238b46). A blog post explaining how to train this model from scratch and use it to implement a color splash effect.
-![Balloon Color Splash](assets/balloon_color_splash.gif)
+![Balloon Color Splash](backup/assets/balloon_color_splash.gif)
 
 
-### [Segmenting Nuclei in Microscopy Images](samples/nucleus). Built for the [2018 Data Science Bowl](https://www.kaggle.com/c/data-science-bowl-2018)
+### [Segmenting Nuclei in Microscopy Images](backup/samples/nucleus). Built for the [2018 Data Science Bowl](https://www.kaggle.com/c/data-science-bowl-2018)
 Code is in the `samples/nucleus` directory.
 
-![Nucleus Segmentation](assets/nucleus_segmentation.png)
+![Nucleus Segmentation](backup/assets/nucleus_segmentation.png)
 
 ### [Detection and Segmentation for Surgery Robots](https://github.com/SUYEgit/Surgery-Robot-Detection-Segmentation) by the NUS Control & Mechatronics Lab.
 ![Surgery Robot Detection and Segmentation](https://github.com/SUYEgit/Surgery-Robot-Detection-Segmentation/raw/master/assets/video.gif)
 
 ### [Reconstructing 3D buildings from aerial LiDAR](https://medium.com/geoai/reconstructing-3d-buildings-from-aerial-lidar-with-ai-details-6a81cb3079c0)
 A proof of concept project by [Esri](https://www.esri.com/), in collaboration with Nvidia and Miami-Dade County. Along with a great write up and code by Dmitry Kudinov, Daniel Hedges, and Omar Maher.
-![3D Building Reconstruction](assets/project_3dbuildings.png)
+![3D Building Reconstruction](backup/assets/project_3dbuildings.png)
 
 ### [Usiigaci: Label-free Cell Tracking in Phase Contrast Microscopy](https://github.com/oist/usiigaci)
 A project from Japan to automatically track cells in a microfluidics platform. Paper is pending, but the source code is released.
 
-![](assets/project_usiigaci1.gif) ![](assets/project_usiigaci2.gif)
+![](backup/assets/project_usiigaci1.gif) ![](backup/assets/project_usiigaci2.gif)
 
 ### [Characterization of Arctic Ice-Wedge Polygons in Very High Spatial Resolution Aerial Imagery](http://www.mdpi.com/2072-4292/10/9/1487)
 Research project to understand the complex processes between degradations in the Arctic and climate change. By Weixing Zhang, Chandi Witharana, Anna Liljedahl, and Mikhail Kanevskiy.
-![image](assets/project_ice_wedge_polygons.png)
+![image](backup/assets/project_ice_wedge_polygons.png)
 
 ### [Mask-RCNN Shiny](https://github.com/huuuuusy/Mask-RCNN-Shiny)
 A computer vision class project by HU Shiyu to apply the color pop effect on people with beautiful results.
-![](assets/project_shiny1.jpg)
+![](backup/assets/project_shiny1.jpg)
 
 ### [Mapping Challenge](https://github.com/crowdAI/crowdai-mapping-challenge-mask-rcnn): Convert satellite imagery to maps for use by humanitarian organisations.
-![Mapping Challenge](assets/mapping_challenge.png)
+![Mapping Challenge](backup/assets/mapping_challenge.png)
 
 ### [GRASS GIS Addon](https://github.com/ctu-geoforall-lab/i.ann.maskrcnn) to generate vector masks from geospatial imagery. Based on a [Master's thesis](https://github.com/ctu-geoforall-lab-projects/dp-pesek-2018) by Ondřej Pešek.
-![GRASS GIS Image](assets/project_grass_gis.png)
+![GRASS GIS Image](backup/assets/project_grass_gis.png)

@@ -31,7 +31,7 @@ MODEL_DIR = "D:\PYTHON_Workspace\Mask_RCNN\FAPSDemonstrator\logs"
 # Path to Ballon trained weights
 # You can download this file from the Releases page
 # https://github.com/matterport/Mask_RCNN/releases
-LAST_WEIGHTS_PATH = "D:\PYTHON_Workspace\Mask_RCNN\FAPSDemonstrator/logs\fapsdemonstrator20191006T0325\mask_rcnn_fapsdemonstrator_0006.h5"  # TODO: update this
+LAST_WEIGHTS_PATH = "E:\WORKSPACE_JBK\GITHUB\Mask_RCNN\FAPSDemonstrator\logs/fapsdemonstrator20191006T0325\mask_rcnn_fapsdemonstrator_0006.h5"  # TODO: update this
 
 config = FAPSDemonstratorConfig
 
@@ -58,7 +58,7 @@ def get_ax(rows=1, cols=1, size=16):
 
 
 # Load validation dataset
-DEMONSTRATOR_DATASET_FILE = "D:\GIT_REPO\FAPSDemonstratorCalibrationService/NONE/export-2019-10-05T17_07_37.056Z.json"
+DEMONSTRATOR_DATASET_FILE = "E:/WORKSPACE_JBK/GITHUB\FAPSDemonstrator_Calibration_Service/NONE/export-2019-10-05T17_07_37.056Z.json"
 dataset = FAPSDemonstratorDataset()
 dataset.load_demonstrator(DEMONSTRATOR_DATASET_FILE, "val")
 
@@ -83,7 +83,7 @@ with tf.device(DEVICE):
     model = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR,
                               config=config)
 
-weights_path = model.find_last()
+weights_path = LAST_WEIGHTS_PATH  # model.find_last()
 
 # Load weights
 print("Loading weights ", weights_path)
@@ -109,5 +109,5 @@ log("gt_class_id", gt_class_id)
 log("gt_bbox", gt_bbox)
 log("gt_mask", gt_mask)
 
-# splash = color_splash(image, r['masks'])
-# display_images([splash], cols=1)
+splash = color_splash(image, r['masks'])
+display_images([splash], cols=1)
