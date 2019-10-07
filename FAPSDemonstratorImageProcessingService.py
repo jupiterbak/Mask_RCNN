@@ -1,3 +1,4 @@
+import base64
 import colorsys
 import logging
 import time
@@ -183,6 +184,10 @@ class Service:
             # Process the image. TODO: start an external process for it
             boxes, masks, class_ids, scores, masked_image = self.processor.process_image(file_path)
 
+            # Save the processed image locally
+            processed_file_path = dir_path + '/processed_images/{}.png'.format(current_object)
+            cv2.imwrite(processed_file_path, masked_image)
+
             # Send the result back
             data = {
                 "time": datetime.datetime.now().timestamp(),
@@ -210,6 +215,7 @@ class Service:
                     cv2.destroyAllWindows()
                     return
             else:
+                bytes_read = open(processed_file_path, "rb").read()
                 debug_data = {
                     "time": datetime.datetime.now().timestamp(),
                     "start": True,
@@ -219,7 +225,7 @@ class Service:
                     "class_ids": class_ids.tolist(),
                     "class_name": [CLASS_NAMES[c] for c in class_ids.tolist()],
                     "scores": scores.tolist(),
-                    "picture": masked_image.tolist()
+                    "picture": bytes_read.hex()
                 }
                 self.channel.basic_publish(
                     exchange=self.exchange_result_pub_name,
