@@ -240,7 +240,7 @@ def detect_and_color_splash(model, image_path=None, video_path=None):
             min_dim=config.IMAGE_MIN_DIM,
             max_dim=config.IMAGE_MAX_DIM,
             mode=config.IMAGE_RESIZE_MODE)
-        
+
         # Detect objects
         r = model.detect([image], verbose=1)[0]
         # Color splash
