@@ -12,3 +12,4 @@ IPython[all]
 pika
 pandas
 tqdm
+imageio-ffmpeg
