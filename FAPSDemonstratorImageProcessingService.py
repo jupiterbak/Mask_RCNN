@@ -23,6 +23,7 @@ MODEL_DIR = "D:\PYTHON_Workspace\Mask_RCNN\FAPSDemonstrator\logs"
 # You can download this file from the Releases page
 LAST_WEIGHTS_PATH = "E:\WORKSPACE_JBK\GITHUB\Mask_RCNN\FAPSDemonstrator\logs/fapsdemonstrator20191006T0325\mask_rcnn_fapsdemonstrator_0006.h5"  # TODO: update this
 CLASS_NAMES = ['BG', "peanuts", "m_and_m", "haribo", "faps"]
+# class_names = ['BG', "haribo", "choco_munze", "choco", "hanuta"]
 
 # Device to load the neural network on.
 # Useful if you're training a model on the same

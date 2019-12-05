@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 import time
 from skimage.measure import find_contours
+import tensorflow as tf
 
 import mrcnn.model as modellib
 from mrcnn import utils
@@ -19,7 +20,13 @@ MODEL_DIR = "D:\PYTHON_Workspace\Mask_RCNN\FAPSDemonstrator\logs"
 # Path to Ballon trained weights
 # You can download this file from the Releases page
 # https://github.com/matterport/Mask_RCNN/releases
-LAST_WEIGHTS_PATH = "E:\WORKSPACE_JBK\GITHUB\Mask_RCNN\FAPSDemonstrator\logs/fapsdemonstrator20191006T0325\mask_rcnn_fapsdemonstrator_0006.h5"  # TODO: update this
+LAST_WEIGHTS_PATH = "E:/WORKSPACE_JBK/GITHUB/Mask_RCNN/FAPSDemonstrator/coeficient_lange_nacht/" \
+                    "mask_rcnn_fapsdemonstrator_0006.h5"  # TODO: update this
+# Device to load the neural network on.
+# Useful if you're training a model on the same
+# machine, in which case use CPU and leave the
+# GPU for training.
+DEVICE = "/cpu:0"  # /cpu:0 or /gpu:0
 
 config = FAPSDemonstratorConfig
 
@@ -99,7 +106,10 @@ config = InferenceConfig()
 config.display()
 
 # Create model object in inference mode.
+# Create model in inference mode
+# with tf.device(DEVICE):
 model = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR, config=config)
+
 
 # Load weights trained
 model.load_weights(LAST_WEIGHTS_PATH, by_name=True)
@@ -107,15 +117,15 @@ model.load_weights(LAST_WEIGHTS_PATH, by_name=True)
 # COCO Class names
 # Index of the class in the list is its ID. For example, to get ID of
 # the teddy bear class, use: class_names.index('teddy bear')
-class_names = ['BG', "peanuts", "m_and_m", "haribo", "faps"]
+class_names = ['BG', "haribo", "choco_munze", "choco", "hanuta"]
 
 
 fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
-video_writer = cv2.VideoWriter('picture_list_output.avi', fourcc, 5.0, (1024, 768))
+video_writer = cv2.VideoWriter('picture_list_output_lange_nacht.avi', fourcc, 5.0, (1024, 768))
 ground_colors = get_colors(len(class_names))
 
 # get all images
-PICTURE_FOLDER = "E:\WORKSPACE_JBK\Temp\Image_Labelling"
+PICTURE_FOLDER = "E:/WORKSPACE_JBK/Temp/Image_Labelling/NONE"
 # Set path to the images
 calib_imgs_path = Path(PICTURE_FOLDER)
 img_list = []
